@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #00B8D4; /* Blue background */
+            color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .cell {
+            width: 120px;
+            height: 120px;
+            font-size: 3em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid black;
+            background-color: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s ease;
+            border-radius: 10px;
+        }
+
+        .cell:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .cell.taken {
+            pointer-events: none;
+            background-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .cell.Player {
+            color: #FFEB3B; /* Bright yellow for Player */
+        }
+
+        .cell.Computer {
+            color: #4CAF50; /* Bright green for Computer */
+        }
+
+        .status {
+            font-size: 1.8em;
+            margin-top: 30px;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1.4em;
+            margin-top: 30px;
+            border: none;
+            border-radius: 25px;
+            background-color: #FF4081;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #E91E63;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 600px) {
+            .board {
+                grid-template-columns: repeat(3, 100px);
+                grid-template-rows: repeat(3, 100px);
+                gap: 5px;
+            }
+
+            .cell {
+                font-size: 2.5em;
+            }
+
+            button {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="board" id="board"></div>
+<div class="status" id="status">Player's Turn!</div>
+<button onclick="restartGame()">Restart Game</button>
+
+<script>
+    const board = document.getElementById('board');
+    const status = document.getElementById('status');
+    const cells = Array(9).fill(null);
+    let currentPlayer = 'X';  // Player (X)
+    let aiPlayer = 'O';       // Computer (O)
+
+    // Create the game board
+    function createBoard() {
+        board.innerHTML = '';
+        cells.forEach((cell, index) => {
+            const div = document.createElement('div');
+            div.classList.add('cell');
+            if (cell) div.classList.add('taken', cell);
+            div.textContent = cell;
+            div.addEventListener('click', () => handlePlayerMove(index));
+            board.appendChild(div);
+        });
+    }
+
+    // Handle player's move
+    function handlePlayerMove(index) {
+        if (cells[index] || checkWinner()) return;
+        cells[index] = currentPlayer;
+        createBoard();
+        const winner = checkWinner();
+        if (winner) {
+            if (winner === 'Draw') {
+                status.textContent = "It's a Draw!";
+            } else {
+                status.textContent = "Player Wins!";
+            }
+            setTimeout(restartGame, 2000); // Restart game after 2 seconds
+            return;
+        }
+        currentPlayer = aiPlayer;
+        status.textContent = "Computer's Turn...";
+        setTimeout(aiMove, 500);
+    }
+
+    // Computer makes its move (Minimax Algorithm)
+    function aiMove() {
+        const bestMove = minimax(cells, aiPlayer);
+        cells[bestMove.index] = aiPlayer;
+        createBoard();
+        const winner = checkWinner();
+        if (winner) {
+            if (winner === 'Draw') {
+                status.textContent = "It's a Draw!";
+            } else {
+                status.textContent = "Computer Wins!";
+            }
+            setTimeout(restartGame, 2000); // Restart game after 2 seconds
+            return;
+        }
+        currentPlayer = 'X';
+        status.textContent = "Player's Turn!";
+    }
+
+    // Minimax Algorithm to find the optimal move for AI
+    function minimax(board, player) {
+        const availableSpots = getAvailableSpots(board);
+
+        // If the board is full or someone won, return the score
+        if (checkWinner(board)) {
+            return { score: getScore(board, player) };
+        }
+
+        if (availableSpots.length === 0) {
+            return { score: 0 }; // Tie
+        }
+
+        let moves = [];
+        for (let i = 0; i < availableSpots.length; i++) {
+            const move = {};
+            move.index = availableSpots[i];
+            board[move.index] = player;
+
+            // Recursively call minimax for the next move
+            const result = minimax(board, player === aiPlayer ? 'X' : aiPlayer);
+            move.score = result.score;
+            board[move.index] = null;
+            moves.push(move);
+        }
+
+        // Choose the best move based on the player's turn
+        let bestMove;
+        if (player === aiPlayer) {
+            let bestScore = -Infinity;
+            moves.forEach(move => {
+                if (move.score > bestScore) {
+                    bestScore = move.score;
+                    bestMove = move;
+                }
+            });
+        } else {
+            let bestScore = Infinity;
+            moves.forEach(move => {
+                if (move.score < bestScore) {
+                    bestScore = move.score;
+                    bestMove = move;
+                }
+            });
+        }
+
+        return bestMove;
+    }
+
+    // Get available spots
+    function getAvailableSpots(board) {
+        return board.map((cell, index) => cell === null ? index : null).filter(i => i !== null);
+    }
+
+    // Get score for the board (1 for Computer, -1 for Player, 0 for tie)
+    function getScore(board, player) {
+        const winner = checkWinner(board);
+        if (winner === aiPlayer) {
+            return 1;
+        } else if (winner === 'X') {
+            return -1;
+        }
+        return 0;
+    }
+
+    // Check if there's a winner
+    function checkWinner(board = cells) {
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        for (let combination of winPatterns) {
+            const [a, b, c] = combination;
+            if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                return board[a];  // Return 'X' or 'O' if there's a winner
+            }
+        }
+
+        // Check for a tie
+        if (board.every(cell => cell !== null)) {
+            return 'Draw';  // Indicate that the game is a draw
+        }
+
+        return null;
+    }
+
+    // Restart the game
+    function restartGame() {
+        cells.fill(null);
+        currentPlayer = 'X';
+        status.textContent = "Player's Turn!";
+        createBoard();
+    }
+
+    // Initialize the game
+    createBoard();
+</script>
+
+</body>
+</html>
